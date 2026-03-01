@@ -1,12 +1,12 @@
-from dotenv import load_dotenv
 import os
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -17,12 +17,9 @@ rag_document_path = Path.cwd() / "rag" / "documents/"
 pdfs = [file for file in rag_document_path.rglob(pattern="*.pdf")]
 markdowns = [file for file in rag_document_path.rglob(pattern="*.md")]
 
-from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_api_key)
 
-
-from langchain_community.document_loaders import PyPDFLoader
 
 docs = [PyPDFLoader(pdf).load()[0] for pdf in pdfs]
 
@@ -46,7 +43,6 @@ vectorstore = Chroma.from_documents(
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 2})
 
-from langchain_core.prompts import ChatPromptTemplate
 
 message = """
         Use the context to answer questions about Alex Senetcky.
@@ -63,9 +59,7 @@ message = """
 prompt_template = ChatPromptTemplate.from_messages([("human", message)])
 
 
-from langchain_core.runnables import RunnablePassthrough
-
-rag_chain = ({"context": retriever, "question": RunnablePassthrough()} | prompt_template | llm)
+rag_chain = {"context": retriever, "question": RunnablePassthrough()} | prompt_template | llm
 
 response = rag_chain.invoke("What certifications does Alex Senetcky have?")
 print(response.content)
