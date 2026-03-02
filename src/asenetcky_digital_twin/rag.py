@@ -15,8 +15,16 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 RAG_DOCUMENT_PATH = Path.cwd() / "rag" / "documents/"
 
+llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
+
 
 def load_documents() -> list[Document]:
+    """
+    Load documents from RAG_DOCUMENT_PATH using unstructured[local].
+
+    Returns:
+        List of Langchain Document objects.
+    """
 
     document_paths = [path for path in RAG_DOCUMENT_PATH.rglob("*.*")]
     loader = UnstructuredLoader(document_paths)
@@ -24,47 +32,9 @@ def load_documents() -> list[Document]:
     return loader.load()
 
 
-# def load_pdfs() -> list[Document]:
-#     """
-#     Load PDFs in specified directory using PyPDFDirectoryLoader
+def split_text(documents: list[Document]):
+    """ """
 
-#     Returns:
-#     List of Langchain Documents
-#     """
-
-#     document_loader = PyPDFDirectoryLoader(RAG_DOCUMENT_PATH, recursive=True)
-#     return document_loader.load()
-
-
-# def load_markdowns() -> list[Document]:
-#     """
-#     Load markdown documents in specified directory using
-
-#     Returns:
-#     List of Langchain Documents
-#     """
-
-#     markdowns = [file for file in RAG_DOCUMENT_PATH.rglob(pattern="*.md")]
-
-#     documents = []
-
-#     for markdown in markdowns:
-#         document = UnstructuredMarkdownLoader(
-#             markdown,
-#             mode="elements",
-#             strategy="fast",
-#         )
-#         documents.append(document)
-
-#     loaded_documents = [document.load() for document in documents]
-
-#     return loaded_documents
-
-
-llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_api_key)
-
-
-docs = [PyPDFLoader(pdf).load()[0] for pdf in pdfs]
 
 # chunk_size = 500
 # chunk_overlap = 100
