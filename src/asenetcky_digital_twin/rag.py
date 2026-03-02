@@ -1,3 +1,4 @@
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from chromadb.api.types import Document
 import os
 from pathlib import Path
@@ -35,44 +36,49 @@ def load_documents() -> list[Document]:
 def split_text(documents: list[Document]):
     """ """
 
+    chunk_size = 300
+    chunk_overlap = 100
 
-# chunk_size = 500
-# chunk_overlap = 100
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        length_function=len,
+        add_start_index=True,
+    )
 
-# rc_splitter = RecursiveCharacterTextSplitter(
-#     separators=["\n\n", "\n", " ", ""],
-#     chunk_size=chunk_size,
-#     chunk_overlap=chunk_overlap
-#     )
+    chunks = text_splitter.split_documents(documents)
+    print(f"Split {len(documents)} documents into {len(chunks)} chunks.")
 
-# docs = rc_splitter.split_text(quote)
-# print(docs)
-
-
-embedding_function = OpenAIEmbeddings(api_key=openai_api_key, model="text-embedding-3-small")
-vectorstore = Chroma.from_documents(
-    docs, embedding=embedding_function, persist_directory=Path.cwd() / "rag" / "vector-store"
-)
-
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 2})
+    return chunks
 
 
-message = """
-        Use the context to answer questions about Alex Senetcky.
+docs = load_documents()
+chunks = split_text(docs)
 
-        Context:
-        {context}
+# embedding_function = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-3-small")
+# vectorstore = Chroma.from_documents(
+#     docs, embedding=embedding_function, persist_directory=Path.cwd() / "rag" / "vector-store"
+# )
 
-        Question:
-        {question}
-
-        Answer:
-        """
-
-prompt_template = ChatPromptTemplate.from_messages([("human", message)])
+# retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 2})
 
 
-rag_chain = {"context": retriever, "question": RunnablePassthrough()} | prompt_template | llm
+# message = """
+#         Use the context to answer questions about Alex Senetcky.
 
-response = rag_chain.invoke("What certifications does Alex Senetcky have?")
-print(response.content)
+#         Context:
+#         {context}
+
+#         Question:
+#         {question}
+
+#         Answer:
+#         """
+
+# prompt_template = ChatPromptTemplate.from_messages([("human", message)])
+
+
+# rag_chain = {"context": retriever, "question": RunnablePassthrough()} | prompt_template | llm
+
+# response = rag_chain.invoke("What certifications does Alex Senetcky have?")
+# print(response.content)
