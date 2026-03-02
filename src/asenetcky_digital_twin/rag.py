@@ -1,21 +1,64 @@
+from chromadb.api.types import Document
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, PyPDFDirectoryLoader, UnstructuredMarkdownLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_unstructured import UnstructuredLoader
 
 load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
 
-rag_document_path = Path.cwd() / "rag" / "documents/"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+RAG_DOCUMENT_PATH = Path.cwd() / "rag" / "documents/"
 
 
-pdfs = [file for file in rag_document_path.rglob(pattern="*.pdf")]
-markdowns = [file for file in rag_document_path.rglob(pattern="*.md")]
+def load_documents() -> list[Document]:
+
+    document_paths = [path for path in RAG_DOCUMENT_PATH.rglob("*.*")]
+    loader = UnstructuredLoader(document_paths)
+
+    return loader.load()
+
+
+# def load_pdfs() -> list[Document]:
+#     """
+#     Load PDFs in specified directory using PyPDFDirectoryLoader
+
+#     Returns:
+#     List of Langchain Documents
+#     """
+
+#     document_loader = PyPDFDirectoryLoader(RAG_DOCUMENT_PATH, recursive=True)
+#     return document_loader.load()
+
+
+# def load_markdowns() -> list[Document]:
+#     """
+#     Load markdown documents in specified directory using
+
+#     Returns:
+#     List of Langchain Documents
+#     """
+
+#     markdowns = [file for file in RAG_DOCUMENT_PATH.rglob(pattern="*.md")]
+
+#     documents = []
+
+#     for markdown in markdowns:
+#         document = UnstructuredMarkdownLoader(
+#             markdown,
+#             mode="elements",
+#             strategy="fast",
+#         )
+#         documents.append(document)
+
+#     loaded_documents = [document.load() for document in documents]
+
+#     return loaded_documents
 
 
 llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_api_key)
