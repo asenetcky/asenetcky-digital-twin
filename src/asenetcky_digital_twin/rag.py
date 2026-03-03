@@ -6,9 +6,7 @@ from chromadb.api.types import Document
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_community.vectorstores.utils import filter_complex_metadata
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_unstructured import UnstructuredLoader
 
@@ -16,8 +14,7 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 RAG_DOCUMENT_PATH = Path.cwd() / "rag" / "documents/"
-
-llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
+CHROMA_PATH = Path.cwd() / "rag" / "vector-store"
 
 
 def load_documents() -> list[Document]:
@@ -37,7 +34,7 @@ def load_documents() -> list[Document]:
 def split_text(documents: list[Document]):
     """ """
 
-    chunk_size = 300
+    chunk_size = 500
     chunk_overlap = 100
 
     text_splitter = RecursiveCharacterTextSplitter(
@@ -54,8 +51,8 @@ def split_text(documents: list[Document]):
     return chunks
 
 
-# Path to the directory to save Chroma database
-CHROMA_PATH = Path.cwd() / "rag" / "vector-store"
+def embedding_function():
+    return OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-3-small")
 
 
 def save_to_chroma(chunks: list[Document]):
@@ -71,18 +68,15 @@ def save_to_chroma(chunks: list[Document]):
     if CHROMA_PATH.exists():
         shutil.rmtree(CHROMA_PATH)
 
-    embedding_function = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-3-small")
-
     # Create a new Chroma database from the documents using OpenAI embeddings
     Chroma.from_documents(
-        collection_name="digital-twin", documents=chunks, embedding=embedding_function, persist_directory=CHROMA_PATH
+        collection_name="digital-twin", documents=chunks, embedding=embedding_function(), persist_directory=CHROMA_PATH
     )
 
-    # Persist the database to disk
-    print(f"Saved {len(chunks)} chunks to {CHROMA_PATH}.")
+    print(f"[INFO]: Saved {len(chunks)} chunks to {CHROMA_PATH}.")
 
 
-def generate_data_store():
+def generate_vector_store():
     """
     Function to generate vector database in chroma from documents.
     """
@@ -91,40 +85,14 @@ def generate_data_store():
     save_to_chroma(chunks)  # Save the processed data to a data store
 
 
-# Generate the data store
-generate_data_store()
+def retrieve_vector_store(
+    search_type: str = "similarity",
+    n_docs: int = 4,
+):
 
+    vector_store = Chroma(
+        collection_name="digital-twin", embedding_function=embedding_function(), persist_directory=CHROMA_PATH
+    )
 
-embedding_function = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-3-small")
-vector_store = Chroma(
-    collection_name="digital-twin", embedding_function=embedding_function, persist_directory=CHROMA_PATH
-)
-
-
-# embedding_function = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model="text-embedding-3-small")
-# vectorstore = Chroma.from_documents(
-#     docs, embedding=embedding_function, persist_directory=Path.cwd() / "rag" / "vector-store"
-# )
-
-retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 2})
-
-
-message = """
-        Use the context to answer questions about Alex Senetcky.
-
-        Context:
-        {context}
-
-        Question:
-        {question}
-
-        Answer:
-        """
-
-prompt_template = ChatPromptTemplate.from_messages([("human", message)])
-
-
-rag_chain = {"context": retriever, "question": RunnablePassthrough()} | prompt_template | llm
-
-response = rag_chain.invoke("What certifications does Alex Senetcky have?")
-print(response.content)
+    retriever = vector_store.as_retriever(search_type=search_type, search_kwargs={"k": n_docs})
+    return retriever
